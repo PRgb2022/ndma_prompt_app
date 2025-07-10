@@ -1,0 +1,34 @@
+body {
+  font-family: Arial;
+  background: #f0f4f8;
+  margin: 0;
+  padding: 20px;
+}
+.container {
+  background: white;
+  max-width: 700px;
+  margin: auto;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 0 15px rgba(0,0,0,0.1);
+}
+input[type="text"] {
+  width: 80%;
+  padding: 10px;
+  margin-right: 10px;
+}
+button {
+  padding: 10px 15px;
+}
+pre {
+  background: #eee;
+  padding: 10px;
+  border-radius: 4px;
+}
+li {
+  cursor: pointer;
+  color: blue;
+}
+li:hover {
+  text-decoration: underline;
+}
