@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>NDMA Prompt Query Assistant</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>NDMA Alerts Assistant</h1>
+    <form id="promptForm">
+      <input type="text" id="prompt" name="prompt" placeholder="Ask your question..." required>
+      <button type="submit">Submit</button>
+    </form>
+
+    <div id="resultArea">
+      <h3>Result:</h3>
+      <div id="resultText"></div>
+
+      <h4>SQL Query:</h4>
+      <pre id="sqlQuery"></pre>
+
+      <h4>Related Questions:</h4>
+      <ul id="suggestionsList"></ul>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('promptForm');
+    const resultText = document.getElementById('resultText');
+    const sqlQuery = document.getElementById('sqlQuery');
+    const suggestionsList = document.getElementById('suggestionsList');
+
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const prompt = document.getElementById('prompt').value;
+
+      const response = await fetch('/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      });
+
+      const data = await response.json();
+      resultText.textContent = data.result;
+      sqlQuery.textContent = data.sql;
+
+      suggestionsList.innerHTML = '';
+      data.suggestions.forEach(s => {
+        const li = document.createElement('li');
+        li.textContent = s;
+        li.onclick = () => {
+          document.getElementById('prompt').value = s;
+          form.dispatchEvent(new Event('submit'));
+        };
+        suggestionsList.appendChild(li);
+      });
+    };
+  </script>
+</body>
+</html>
