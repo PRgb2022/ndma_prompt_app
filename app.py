@@ -10,7 +10,7 @@ db_config = {
     'port': 3306,
     'user': 'root',
     'password': 'Prajwal.sql@25',
-    'database': 'ndma prompt'
+    'database': 'ndma_prompt'
 }
 
 @app.route('/')
