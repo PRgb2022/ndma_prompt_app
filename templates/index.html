@@ -1,23 +1,58 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>NDMA Prompt Query Assistant</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8" />
+  <title>NDMA Alerts Assistant</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: #f3f6fa;
+      padding: 30px;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    input[type=text] {
+      width: 80%;
+      padding: 10px;
+      font-size: 16px;
+    }
+    button {
+      padding: 10px 16px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .result-box {
+      margin-top: 20px;
+      background: #f1f1f1;
+      padding: 15px;
+      border-radius: 5px;
+    }
+    .sql-box {
+      font-family: monospace;
+      background: #eee;
+      padding: 10px;
+      margin-top: 10px;
+    }
+  </style>
 </head>
 <body>
   <div class="container">
-    <h1>NDMA Alerts Assistant</h1>
-    <form id="promptForm">
-      <input type="text" id="prompt" name="prompt" placeholder="Ask your question..." required>
-      <button type="submit">Submit</button>
-    </form>
+    <h2>NDMA Alerts Assistant</h2>
+    <input type="text" id="prompt" placeholder="Ask your question..." />
+    <button onclick="sendPrompt()">Submit</button>
 
-    <div id="resultArea">
+    <div class="result-box">
       <h3>Result:</h3>
       <div id="resultText"></div>
 
       <h4>SQL Query:</h4>
-      <pre id="sqlQuery"></pre>
+      <div class="sql-box" id="sqlQuery"></div>
 
       <h4>Related Questions:</h4>
       <ul id="suggestionsList"></ul>
@@ -25,36 +60,26 @@
   </div>
 
   <script>
-    const form = document.getElementById('promptForm');
-    const resultText = document.getElementById('resultText');
-    const sqlQuery = document.getElementById('sqlQuery');
-    const suggestionsList = document.getElementById('suggestionsList');
-
-    form.onsubmit = async (e) => {
-      e.preventDefault();
+    async function sendPrompt() {
       const prompt = document.getElementById('prompt').value;
-
-      const response = await fetch('/ask', {
+      const res = await fetch('/ask', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt })
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({prompt})
       });
+      const data = await res.json();
+      document.getElementById('resultText').innerText = data.result;
+      document.getElementById('sqlQuery').innerText = data.sql;
 
-      const data = await response.json();
-      resultText.textContent = data.result;
-      sqlQuery.textContent = data.sql;
-
-      suggestionsList.innerHTML = '';
-      data.suggestions.forEach(s => {
+      const suggestions = data.suggestions || [];
+      const list = document.getElementById('suggestionsList');
+      list.innerHTML = '';
+      suggestions.forEach(s => {
         const li = document.createElement('li');
-        li.textContent = s;
-        li.onclick = () => {
-          document.getElementById('prompt').value = s;
-          form.dispatchEvent(new Event('submit'));
-        };
-        suggestionsList.appendChild(li);
+        li.innerText = s;
+        list.appendChild(li);
       });
-    };
+    }
   </script>
 </body>
 </html>
