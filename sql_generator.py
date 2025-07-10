@@ -50,7 +50,7 @@ def prompt_to_sql(prompt):
             "SELECT * FROM alerts ORDER BY effectiveTime DESC LIMIT 10;",
             "Most recent alerts"
         )
-
+    
     # No match found
     return None, None
 
