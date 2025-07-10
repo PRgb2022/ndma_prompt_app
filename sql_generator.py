@@ -26,11 +26,17 @@ def prompt_to_sql(prompt):
         )
 
     # Match: frequent alert types
-    if "event type" in prompt or "most common alert" in prompt or "frequent alerts" in prompt:
-        return (
-            "SELECT event_type, COUNT(*) AS total FROM alerts GROUP BY event_type ORDER BY total DESC LIMIT 5;",
-            "Top 5 most frequent alert event types"
-        )
+if ("event type" in prompt or 
+    "alert types" in prompt or 
+    "most common alerts" in prompt or 
+    "most common alert types" in prompt or 
+    "frequent alerts" in prompt or 
+    "common alert" in prompt):
+    return (
+        "SELECT event_type, COUNT(*) AS total FROM alerts GROUP BY event_type ORDER BY total DESC LIMIT 5;",
+        "Top 5 most frequent alert event types"
+    )
+
 
     # Match: flood-related alerts
     if "flood" in prompt:
