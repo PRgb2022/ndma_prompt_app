@@ -1,85 +1,120 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>NDMA Alerts Assistant</title>
-  <style>
-    body {
-      font-family: Arial;
-      background: #f3f6fa;
-      padding: 30px;
-    }
-    .container {
-      max-width: 800px;
-      margin: auto;
-      background: white;
-      padding: 30px;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    input[type=text] {
-      width: 80%;
-      padding: 10px;
-      font-size: 16px;
-    }
-    button {
-      padding: 10px 16px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    .result-box {
-      margin-top: 20px;
-      background: #f1f1f1;
-      padding: 15px;
-      border-radius: 5px;
-    }
-    .sql-box {
-      font-family: monospace;
-      background: #eee;
-      padding: 10px;
-      margin-top: 10px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>NDMA Alert Query Assistant</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+        }
+
+        input, button {
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        #result, #sql {
+            margin-top: 20px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+
+        #suggestions button {
+            margin: 5px 5px 0 0;
+            padding: 8px 12px;
+            background-color: #eee;
+            border: 1px solid #ccc;
+            cursor: pointer;
+        }
+
+        canvas {
+            margin-top: 30px;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h2>NDMA Alerts Assistant</h2>
-    <input type="text" id="prompt" placeholder="Ask your question..." />
-    <button onclick="sendPrompt()">Submit</button>
+    <h2>NDMA Prompt Assistant</h2>
 
-    <div class="result-box">
-      <h3>Result:</h3>
-      <div id="resultText"></div>
+    <input type="text" id="promptInput" placeholder="Ask something like: Top 5 states with most alerts" style="width: 60%;">
+    <button onclick="askPrompt()">Ask</button>
 
-      <h4>SQL Query:</h4>
-      <div class="sql-box" id="sqlQuery"></div>
+    <div id="result"></div>
+    <div id="sql"></div>
 
-      <h4>Related Questions:</h4>
-      <ul id="suggestionsList"></ul>
-    </div>
-  </div>
+    <div id="suggestions"></div>
 
-  <script>
-    async function sendPrompt() {
-      const prompt = document.getElementById('prompt').value;
-      const res = await fetch('/ask', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({prompt})
-      });
-      const data = await res.json();
-      document.getElementById('resultText').innerText = data.result;
-      document.getElementById('sqlQuery').innerText = data.sql;
+    <canvas id="chartCanvas" width="600" height="300"></canvas>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-      const suggestions = data.suggestions || [];
-      const list = document.getElementById('suggestionsList');
-      list.innerHTML = '';
-      suggestions.forEach(s => {
-        const li = document.createElement('li');
-        li.innerText = s;
-        list.appendChild(li);
-      });
-    }
-  </script>
+    <script>
+        function askPrompt(promptText = null) {
+            const prompt = promptText || document.getElementById("promptInput").value;
+
+            fetch('/ask', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("result").textContent = "Answer:\n" + data.result;
+                document.getElementById("sql").textContent = "SQL Used:\n" + data.sql;
+
+                // Suggestions
+                const suggestionsDiv = document.getElementById("suggestions");
+                suggestionsDiv.innerHTML = '';
+                data.suggestions.forEach(s => {
+                    const btn = document.createElement('button');
+                    btn.textContent = s;
+                    btn.onclick = () => askPrompt(s);
+                    suggestionsDiv.appendChild(btn);
+                });
+
+                // Chart
+                if (data.chart) {
+                    drawChart(data.chart.data, data.chart.labels, data.chart.title);
+                } else {
+                    clearChart();
+                }
+            });
+        }
+
+        function drawChart(data, labels, title) {
+            const ctx = document.getElementById('chartCanvas').getContext('2d');
+
+            if (window.chartObj) {
+                window.chartObj.destroy();
+            }
+
+            window.chartObj = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: title,
+                        data: data,
+                        backgroundColor: '#007bff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function clearChart() {
+            const ctx = document.getElementById('chartCanvas').getContext('2d');
+            ctx.clearRect(0, 0, 600, 300);
+            if (window.chartObj) {
+                window.chartObj.destroy();
+            }
+        }
+    </script>
 </body>
 </html>
