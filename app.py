@@ -10,7 +10,7 @@ db_config = {
     'port': 3306,
     'user': 'root',
     'password': 'Prajwal.sql@25',
-    'database': 'ndma'  
+    'database': 'ndma'  # Make sure this matches your actual database name
 }
 
 @app.route('/')
@@ -21,47 +21,54 @@ def index():
 def ask():
     data = request.get_json()
     prompt = data.get('prompt')
-
     sql, summary = prompt_to_sql(prompt)
-
-    # Debug print to terminal
-    print("Prompt received:", prompt)
-    print("SQL generated:", sql)
 
     if not sql:
         return jsonify({
-            'result': "Sorry, I couldn't understand the prompt.",
+            'result': summary or "Sorry, I didn't understand that.",
             'sql': '',
-            'suggestions': get_suggestions(prompt)
+            'suggestions': get_suggestions(prompt),
+            'chart': None
         })
 
-    result_text = ""
     try:
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor()
         cursor.execute(sql)
         result = cursor.fetchall()
+        result_text = str(result)
 
-        if result:
-            result_text = str(result[0][0]) if len(result[0]) == 1 else str(result[0])
-        else:
-            result_text = "No results found."
+        # Prepare chart data if the result is grouped (like alert counts)
+        result_data = []
+        labels = []
+
+        if result and isinstance(result[0], tuple) and len(result[0]) == 2:
+            for row in result:
+                labels.append(str(row[0]))
+                result_data.append(row[1])
+            result_text = "\n".join(f"{row[0]}: {row[1]}" for row in result)
+
+        return jsonify({
+            'result': result_text,
+            'sql': sql,
+            'suggestions': get_suggestions(prompt),
+            'chart': {
+                'data': result_data,
+                'labels': labels,
+                'title': summary
+            } if result_data and labels else None
+        })
 
     except Exception as e:
-        result_text = f"Error running query: {e}"
-        sql = ""
-
+        return jsonify({
+            'result': f"Error running query: {e}",
+            'sql': sql,
+            'suggestions': get_suggestions(prompt),
+            'chart': None
+        })
     finally:
-        if 'cursor' in locals() and cursor:
-            cursor.close()
-        if 'conn' in locals() and conn:
-            conn.close()
-
-    return jsonify({
-        'result': result_text,
-        'sql': sql,
-        'suggestions': get_suggestions(prompt)
-    })
+        cursor.close()
+        conn.close()
 
 if __name__ == '__main__':
     app.run(debug=True)
