@@ -1,120 +1,152 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>NDMA Alert Query Assistant</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-        }
-
-        input, button {
-            padding: 10px;
-            font-size: 16px;
-        }
-
-        #result, #sql {
-            margin-top: 20px;
-            white-space: pre-wrap;
-            font-family: monospace;
-        }
-
-        #suggestions button {
-            margin: 5px 5px 0 0;
-            padding: 8px 12px;
-            background-color: #eee;
-            border: 1px solid #ccc;
-            cursor: pointer;
-        }
-
-        canvas {
-            margin-top: 30px;
-        }
-    </style>
+  <title>NDMA Alerts Assistant</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 30px;
+      background: #f2f6fa;
+    }
+    h1 {
+      font-size: 32px;
+    }
+    input[type="text"] {
+      width: 500px;
+      padding: 10px;
+      font-size: 16px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+    table {
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px 14px;
+      text-align: left;
+    }
+    #suggestions button {
+      margin: 5px;
+      background-color: #eef;
+      border: 1px solid #88a;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
-    <h2>NDMA Prompt Assistant</h2>
+  <h1>NDMA Alerts Assistant</h1>
 
-    <input type="text" id="promptInput" placeholder="Ask something like: Top 5 states with most alerts" style="width: 60%;">
-    <button onclick="askPrompt()">Ask</button>
+  <input type="text" id="prompt" placeholder="Ask a question like: Top 5 states with most alerts" />
+  <button onclick="askPrompt()">Ask</button>
 
-    <div id="result"></div>
-    <div id="sql"></div>
+  <h2>Result:</h2>
+  <div id="resultTable"></div>
 
-    <div id="suggestions"></div>
+  <h3>SQL Query:</h3>
+  <pre id="sql"></pre>
 
-    <canvas id="chartCanvas" width="600" height="300"></canvas>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <canvas id="resultChart" width="700" height="350"></canvas>
 
-    <script>
-        function askPrompt(promptText = null) {
-            const prompt = promptText || document.getElementById("promptInput").value;
+  <h3>Related Questions:</h3>
+  <div id="suggestions"></div>
 
-            fetch('/ask', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt })
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById("result").textContent = "Answer:\n" + data.result;
-                document.getElementById("sql").textContent = "SQL Used:\n" + data.sql;
+  <script>
+    function askPrompt(customPrompt) {
+      const prompt = customPrompt || document.getElementById("prompt").value;
 
-                // Suggestions
-                const suggestionsDiv = document.getElementById("suggestions");
-                suggestionsDiv.innerHTML = '';
-                data.suggestions.forEach(s => {
-                    const btn = document.createElement('button');
-                    btn.textContent = s;
-                    btn.onclick = () => askPrompt(s);
-                    suggestionsDiv.appendChild(btn);
-                });
+      fetch('/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: prompt })
+      })
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById("sql").textContent = data.sql;
 
-                // Chart
-                if (data.chart) {
-                    drawChart(data.chart.data, data.chart.labels, data.chart.title);
-                } else {
-                    clearChart();
-                }
+        // Show table
+        const container = document.getElementById("resultTable");
+        container.innerHTML = '';
+        if (Array.isArray(data.result) && data.result.length > 0) {
+          const table = document.createElement('table');
+          const thead = document.createElement('thead');
+          const headRow = document.createElement('tr');
+          Object.keys(data.result[0]).forEach(col => {
+            const th = document.createElement('th');
+            th.textContent = col;
+            headRow.appendChild(th);
+          });
+          thead.appendChild(headRow);
+          table.appendChild(thead);
+
+          const tbody = document.createElement('tbody');
+          data.result.forEach(row => {
+            const tr = document.createElement('tr');
+            Object.values(row).forEach(val => {
+              const td = document.createElement('td');
+              td.textContent = val;
+              tr.appendChild(td);
             });
+            tbody.appendChild(tr);
+          });
+          table.appendChild(tbody);
+          container.appendChild(table);
+        } else {
+          container.innerHTML = "<i>No results found or unrecognized prompt.</i>";
         }
 
-        function drawChart(data, labels, title) {
-            const ctx = document.getElementById('chartCanvas').getContext('2d');
+        // Show suggestions
+        const sugDiv = document.getElementById("suggestions");
+        sugDiv.innerHTML = '';
+        data.suggestions.forEach(s => {
+          const btn = document.createElement('button');
+          btn.textContent = s;
+          btn.onclick = () => askPrompt(s);
+          sugDiv.appendChild(btn);
+        });
 
-            if (window.chartObj) {
-                window.chartObj.destroy();
-            }
-
-            window.chartObj = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: title,
-                        data: data,
-                        backgroundColor: '#007bff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
+        // Chart
+        if (data.chart) {
+          drawChart(data.chart.data, data.chart.labels, data.chart.title);
+        } else {
+          clearChart();
         }
+      });
+    }
 
-        function clearChart() {
-            const ctx = document.getElementById('chartCanvas').getContext('2d');
-            ctx.clearRect(0, 0, 600, 300);
-            if (window.chartObj) {
-                window.chartObj.destroy();
-            }
+    let chart = null;
+    function drawChart(data, labels, title) {
+      const ctx = document.getElementById('resultChart').getContext('2d');
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: title,
+            data: data,
+            backgroundColor: '#4a90e2'
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: { beginAtZero: true }
+          }
         }
-    </script>
+      });
+    }
+
+    function clearChart() {
+      if (chart) {
+        chart.destroy();
+        chart = null;
+      }
+    }
+  </script>
 </body>
 </html>
