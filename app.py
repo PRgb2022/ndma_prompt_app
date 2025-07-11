@@ -4,13 +4,13 @@ from sql_generator import prompt_to_sql, get_suggestions
 
 app = Flask(__name__)
 
-# DB Config
+# Database config
 db_config = {
     'host': '127.0.0.1',
     'port': 3306,
     'user': 'root',
     'password': 'Prajwal.sql@25',
-    'database': 'ndma'  # Make sure this matches your actual database name
+    'database': 'ndma'
 }
 
 @app.route('/')
@@ -25,7 +25,7 @@ def ask():
 
     if not sql:
         return jsonify({
-            'result': summary or "Sorry, I didn't understand that.",
+            'result': [],
             'sql': '',
             'suggestions': get_suggestions(prompt),
             'chart': None
@@ -36,39 +36,36 @@ def ask():
         cursor = conn.cursor()
         cursor.execute(sql)
         result = cursor.fetchall()
-        result_text = str(result)
+        columns = [desc[0] for desc in cursor.description]
+        rows = [dict(zip(columns, row)) for row in result]
 
-        # Prepare chart data if the result is grouped (like alert counts)
-        result_data = []
-        labels = []
-
-        if result and isinstance(result[0], tuple) and len(result[0]) == 2:
-            for row in result:
-                labels.append(str(row[0]))
-                result_data.append(row[1])
-            result_text = "\n".join(f"{row[0]}: {row[1]}" for row in result)
-
-        return jsonify({
-            'result': result_text,
-            'sql': sql,
-            'suggestions': get_suggestions(prompt),
-            'chart': {
-                'data': result_data,
-                'labels': labels,
-                'title': summary
-            } if result_data and labels else None
-        })
+        chart_labels, chart_data = [], []
+        if rows and len(rows[0]) == 2:
+            chart_labels = [str(r[columns[0]]) for r in rows]
+            chart_data = [r[columns[1]] for r in rows]
 
     except Exception as e:
         return jsonify({
-            'result': f"Error running query: {e}",
+            'result': [],
             'sql': sql,
             'suggestions': get_suggestions(prompt),
-            'chart': None
+            'chart': None,
+            'error': str(e)
         })
     finally:
         cursor.close()
         conn.close()
+
+    return jsonify({
+        'result': rows,
+        'sql': sql,
+        'suggestions': get_suggestions(prompt),
+        'chart': {
+            'labels': chart_labels,
+            'data': chart_data,
+            'title': summary
+        } if chart_data else None
+    })
 
 if __name__ == '__main__':
     app.run(debug=True)
