@@ -16,6 +16,14 @@ def prompt_to_sql(prompt):
             "Orange alerts by state"
         )
 
+    if "yellow alert" in prompt or "yellow alerts" in prompt:
+        return (
+            "SELECT state_name, COUNT(*) AS yellow_alerts "
+            "FROM alerts WHERE severity = 'Yellow' "
+            "GROUP BY state_name ORDER BY yellow_alerts DESC;",
+            "States with yellow alerts"
+        )
+
     if "top" in prompt and "district" in prompt:
         return (
             "SELECT area_description AS district, COUNT(*) AS total_alerts "
@@ -74,6 +82,7 @@ def get_suggestions(prompt):
     return [
         "Top 5 districts by alert count",
         "List states with orange alerts",
+        "List states with yellow alerts",
         "Which district in Delhi has red alerts",
         "What are the most common alert types?",
         "Recent alerts in the system",
