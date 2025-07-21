@@ -4,71 +4,48 @@ from sql_generator import prompt_to_sql, get_suggestions
 
 app = Flask(__name__)
 
-# Database config
-db_config = {
-    'host': '127.0.0.1',
-    'port': 3306,
-    'user': 'root',
-    'password': 'Prajwal.sql@25',
-    'database': 'ndma'
-}
+def get_db_connection():
+    return mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="",  # update this if your MySQL has a password
+        database="ndma"  # make sure this is your actual DB name
+    )
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/ask', methods=['POST'])
-def ask():
-    data = request.get_json()
-    prompt = data.get('prompt')
-    sql, summary = prompt_to_sql(prompt)
+@app.route('/query', methods=['POST'])
+def query():
+    prompt = request.json.get('prompt')
+    if not prompt:
+        return jsonify({'error': 'No prompt provided'}), 400
 
-    if not sql:
-        return jsonify({
-            'result': [],
-            'sql': '',
-            'suggestions': get_suggestions(prompt),
-            'chart': None
-        })
+    sql_query, description = prompt_to_sql(prompt)
+    if not sql_query:
+        return jsonify({'error': description or 'Unable to generate SQL for the given prompt'}), 400
 
     try:
-        conn = mysql.connector.connect(**db_config)
+        conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute(sql)
-        result = cursor.fetchall()
-        columns = [desc[0] for desc in cursor.description]
-        rows = [dict(zip(columns, row)) for row in result]
-
-        chart_labels, chart_data = [], []
-        if rows and len(rows[0]) == 2:
-            chart_labels = [str(r[columns[0]]) for r in rows]
-            chart_data = [r[columns[1]] for r in rows]
-
-    except Exception as e:
-        return jsonify({
-            'result': [],
-            'sql': sql,
-            'suggestions': get_suggestions(prompt),
-            'chart': None,
-            'error': str(e)
-        })
-    finally:
-        cursor.close()
+        cursor.execute(sql_query)
+        results = cursor.fetchall()
+        column_names = [desc[0] for desc in cursor.description]
         conn.close()
 
-    return jsonify({
-        'result': rows,
-        'sql': sql,
-        'suggestions': get_suggestions(prompt),
-        'chart': {
-            'labels': chart_labels,
-            'data': chart_data,
-            'title': summary
-        } if chart_data else None
-    })
+        suggestions = get_suggestions(prompt)
+
+        return jsonify({
+            'results': results,
+            'columns': column_names,
+            'sql': sql_query,
+            'description': description,
+            'suggestions': suggestions
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'Error running query: {str(e)}'}), 500
 
 if __name__ == '__main__':
-    import os
-port = int(os.environ.get("PORT", 10000))
-app.run(host='0.0.0.0', port=port)
-
+    app.run(debug=True)
