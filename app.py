@@ -9,7 +9,7 @@ from sql_generator import prompt_to_sql, get_suggestions
 load_dotenv()
 
 # Set up OpenAI API key
-openai.api_key = os.getenv("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")
+openai.api_key = os.getenv("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")
 
 app = Flask(__name__)
 
