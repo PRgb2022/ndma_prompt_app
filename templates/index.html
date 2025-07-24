@@ -1,151 +1,70 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>NDMA Alerts Assistant</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta charset="UTF-8" />
+  <title>NDMA Alert Query</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 30px;
-      background: #f2f6fa;
-    }
-    h1 {
-      font-size: 32px;
-    }
-    input[type="text"] {
-      width: 500px;
-      padding: 10px;
-      font-size: 16px;
-    }
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-    }
-    table {
-      border-collapse: collapse;
-      margin-top: 20px;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 8px 14px;
-      text-align: left;
-    }
-    #suggestions button {
-      margin: 5px;
-      background-color: #eef;
-      border: 1px solid #88a;
-      cursor: pointer;
-    }
+    body { font-family: Arial, sans-serif; padding: 30px; background: #f4f4f4; }
+    input[type="text"] { width: 60%; padding: 10px; }
+    button { padding: 10px 20px; }
+    table { margin-top: 20px; border-collapse: collapse; width: 80%; }
+    th, td { border: 1px solid #ddd; padding: 8px; background: #fff; }
+    th { background: #eee; }
   </style>
 </head>
 <body>
-  <h1>NDMA Alerts Assistant</h1>
+  <h2>NDMA Natural Language Alert Query</h2>
+  <input type="text" id="prompt" placeholder="Ask your question here...">
+  <button onclick="sendPrompt()">Search</button>
+  <p><b>Generated SQL:</b> <span id="sql"></span></p>
+  <p><b>Description:</b> <span id="description"></span></p>
 
-  <input type="text" id="prompt" placeholder="Ask a question like: Top 5 states with most alerts" />
-  <button onclick="askPrompt()">Ask</button>
-
-  <h2>Result:</h2>
-  <div id="resultTable"></div>
-
-  <h3>SQL Query:</h3>
-  <pre id="sql"></pre>
-
-  <canvas id="resultChart" width="700" height="350"></canvas>
-
-  <h3>Related Questions:</h3>
-  <div id="suggestions"></div>
+  <div id="results"></div>
+  <p><b>Suggestions:</b></p>
+  <ul id="suggestions"></ul>
 
   <script>
-    function askPrompt(customPrompt) {
-      const prompt = customPrompt || document.getElementById("prompt").value;
-
-      fetch('/ask', {
+    async function sendPrompt() {
+      const prompt = document.getElementById("prompt").value;
+      const response = await fetch('/query', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: prompt })
-      })
-      .then(res => res.json())
-      .then(data => {
-        document.getElementById("sql").textContent = data.sql;
+      });
+      const data = await response.json();
 
-        // Show table
-        const container = document.getElementById("resultTable");
-        container.innerHTML = '';
-        if (Array.isArray(data.result) && data.result.length > 0) {
-          const table = document.createElement('table');
-          const thead = document.createElement('thead');
-          const headRow = document.createElement('tr');
-          Object.keys(data.result[0]).forEach(col => {
-            const th = document.createElement('th');
-            th.textContent = col;
-            headRow.appendChild(th);
-          });
-          thead.appendChild(headRow);
-          table.appendChild(thead);
+      document.getElementById("sql").textContent = data.sql || '';
+      document.getElementById("description").textContent = data.description || '';
 
-          const tbody = document.createElement('tbody');
-          data.result.forEach(row => {
-            const tr = document.createElement('tr');
-            Object.values(row).forEach(val => {
-              const td = document.createElement('td');
-              td.textContent = val;
-              tr.appendChild(td);
-            });
-            tbody.appendChild(tr);
-          });
-          table.appendChild(tbody);
-          container.appendChild(table);
-        } else {
-          container.innerHTML = "<i>No results found or unrecognized prompt.</i>";
-        }
+      const resultDiv = document.getElementById("results");
+      resultDiv.innerHTML = "";
 
-        // Show suggestions
-        const sugDiv = document.getElementById("suggestions");
-        sugDiv.innerHTML = '';
-        data.suggestions.forEach(s => {
-          const btn = document.createElement('button');
-          btn.textContent = s;
-          btn.onclick = () => askPrompt(s);
-          sugDiv.appendChild(btn);
+      if (data.results && data.columns) {
+        let table = "<table><thead><tr>";
+        data.columns.forEach(col => table += `<th>${col}</th>`);
+        table += "</tr></thead><tbody>";
+        data.results.forEach(row => {
+          table += "<tr>";
+          row.forEach(cell => table += `<td>${cell}</td>`);
+          table += "</tr>";
         });
-
-        // Chart
-        if (data.chart) {
-          drawChart(data.chart.data, data.chart.labels, data.chart.title);
-        } else {
-          clearChart();
-        }
-      });
-    }
-
-    let chart = null;
-    function drawChart(data, labels, title) {
-      const ctx = document.getElementById('resultChart').getContext('2d');
-      if (chart) chart.destroy();
-      chart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: title,
-            data: data,
-            backgroundColor: '#4a90e2'
-          }]
-        },
-        options: {
-          responsive: true,
-          scales: {
-            y: { beginAtZero: true }
-          }
-        }
-      });
-    }
-
-    function clearChart() {
-      if (chart) {
-        chart.destroy();
-        chart = null;
+        table += "</tbody></table>";
+        resultDiv.innerHTML = table;
+      } else if (data.error) {
+        resultDiv.innerHTML = `<p style="color:red;">${data.error}</p>`;
       }
+
+      const suggestions = document.getElementById("suggestions");
+      suggestions.innerHTML = "";
+      if (data.suggestions) {
+        data.suggestions.forEach(s => {
+          suggestions.innerHTML += `<li onclick="setPrompt('${s}')">${s}</li>`;
+        });
+      }
+    }
+
+    function setPrompt(text) {
+      document.getElementById("prompt").value = text;
     }
   </script>
 </body>
