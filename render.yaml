@@ -2,8 +2,8 @@ services:
   - type: web
     name: ndma-alerts-assistant
     env: python
-    buildCommand: ""
+    buildCommand: "pip install -r requirements.txt"
     startCommand: "python app.py"
     envVars:
-      - key: PORT
-        value: 10000
+      - key: OPENAI_API_KEY
+        sync: false  # You will manually set it in Render Dashboard
