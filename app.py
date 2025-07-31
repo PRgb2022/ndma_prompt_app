@@ -31,8 +31,10 @@ def generate_sql_with_openai(prompt):
             ]
         )
         sql = response.choices[0].message.content.strip()
+        print("OpenAI SQL:", sql)
         return sql
     except Exception as e:
+        print("OpenAI Error:", e)
         return None
 
 @app.route('/')
