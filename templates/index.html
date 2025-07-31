@@ -10,6 +10,8 @@
     table { margin-top: 20px; border-collapse: collapse; width: 80%; }
     th, td { border: 1px solid #ddd; padding: 8px; background: #fff; }
     th { background: #eee; }
+    li { cursor: pointer; color: #007BFF; }
+    li:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -25,12 +27,20 @@
 
   <script>
     async function sendPrompt() {
-      const prompt = document.getElementById("prompt").value;
+      const promptInput = document.getElementById("prompt");
+      const prompt = promptInput.value.trim();
+
+      if (!prompt) {
+        alert("Please enter a prompt!");
+        return;
+      }
+
       const response = await fetch('/query', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: prompt })
       });
+
       const data = await response.json();
 
       document.getElementById("sql").textContent = data.sql || '';
