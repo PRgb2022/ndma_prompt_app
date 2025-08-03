@@ -17,7 +17,7 @@ def get_db_connection():
     return mysql.connector.connect(
         host="localhost",
         user="root",
-        password="Prajwal.sql@25",  # update if your MySQL has a password
+        password="Prajwal.sql@25",  # Update if needed
         database="ndma"
     )
 
@@ -26,15 +26,14 @@ def generate_sql_with_openai(prompt):
         response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "Convert the user's natural language prompt into a SQL query for a MySQL database containing an 'alerts' table with columns like state_name, area_description, event_type, severity, effectiveTime, etc."},
-                {"role": "user", "content": prompt}
-            ]
+                {"role": "system", "content": "You are a helpful assistant that converts natural language questions into SQL queries for a MySQL table named 'alerts'. The table has columns: id, state_name, area_description, event_type, severity, effectiveTime."},
+                {"role": "user", "content": f"Convert this prompt to a SQL query: {prompt}"}
+            ],
+            temperature=0.2
         )
         sql = response.choices[0].message.content.strip()
-        print("OpenAI SQL:", sql)
         return sql
     except Exception as e:
-        print("OpenAI Error:", e)
         return None
 
 @app.route('/')
@@ -43,21 +42,25 @@ def index():
 
 @app.route('/query', methods=['POST'])
 def query():
-    prompt = request.json.get('prompt')
-    if not prompt:
-        return jsonify({'error': 'No prompt provided'}), 400
-
-    sql_query, description = prompt_to_sql(prompt)
-
-    if not sql_query:
-        # Try OpenAI fallback if hardcoded logic fails
-        sql_query = generate_sql_with_openai(prompt)
-        description = "Generated using OpenAI" if sql_query else None
-
-    if not sql_query:
-        return jsonify({'error': description or 'Unable to generate SQL for the given prompt'}), 400
-
     try:
+        data = request.get_json(force=True)
+        prompt = data.get('prompt', '').strip()
+
+        if not prompt:
+            return jsonify({'error': 'No prompt provided'}), 400
+
+        # Attempt with hardcoded logic first
+        sql_query, description = prompt_to_sql(prompt)
+
+        # If it fails, fallback to OpenAI
+        if not sql_query:
+            sql_query = generate_sql_with_openai(prompt)
+            description = "Generated using OpenAI" if sql_query else None
+
+        if not sql_query:
+            return jsonify({'error': description or 'Unable to generate SQL for the given prompt'}), 400
+
+        # Run SQL and return results
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute(sql_query)
@@ -79,7 +82,5 @@ def query():
         return jsonify({'error': f'Error running query: {str(e)}'}), 500
 
 if __name__ == '__main__':
-    import os
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=True, host="0.0.0.0", port=port)
-
