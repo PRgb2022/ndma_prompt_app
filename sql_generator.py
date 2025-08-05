@@ -8,7 +8,7 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 def prompt_to_sql(prompt):
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4",  # You can also use "gpt-3.5-turbo" for lower cost
+            model="gpt-4",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that converts natural language questions into SQL queries for a table named 'alerts'. The table has columns: id, state_name, area_description, event_type, severity, effectiveTime."},
                 {"role": "user", "content": f"Convert this prompt to a SQL query: {prompt}"}
@@ -17,10 +17,13 @@ def prompt_to_sql(prompt):
         )
 
         sql_query = response['choices'][0]['message']['content'].strip()
+        print("[SQL GENERATED]", sql_query) 
         return sql_query, "Generated from natural language"
 
     except Exception as e:
+        print("[OPENAI ERROR]", str(e))
         return None, f"Error from OpenAI API: {str(e)}"
+
 
 def get_suggestions(prompt):
     return [
